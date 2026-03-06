@@ -123,3 +123,10 @@ extension Request {
         try await clerkView(template, context: [String: String]())
     }
 }
+
+// MARK: - Bundle access
+
+extension Bundle {
+    /// The resource bundle for ClerkLeaf — use this to locate bundled Leaf templates.
+    public static var clerkLeaf: Bundle { .module }
+}

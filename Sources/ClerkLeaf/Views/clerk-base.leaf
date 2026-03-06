@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>#(pageTitle ?? "My App")</title>
+    <title>#if(pageTitle):#(pageTitle)#else:My App#endif</title>
     #clerkScript()
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -34,14 +34,20 @@
             font-size: 0.9rem;
         }
         header nav a:hover { color: #111; }
-        .clerk-signed-in,
-        .clerk-signed-out { display: none; }
         main { padding: 2rem 1.5rem; max-width: 960px; margin: 0 auto; }
     </style>
 </head>
 <body>
+    <!-- Hide auth sections immediately via JS before render, avoiding a CSS class race -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.clerk-signed-in, .clerk-signed-out')
+            .forEach(function (el) { el.style.display = 'none'; });
+    });
+    </script>
+
     <header>
-        <a class="logo" href="/">#(appName ?? "My App")</a>
+        <a class="logo" href="/">#if(appName):#(appName)#else:My App#endif</a>
         <nav>
             <div class="clerk-signed-in">
                 <div id="clerk-user-button-nav"></div>
@@ -58,21 +64,29 @@
     </main>
 
     <script>
-    window.addEventListener('load', async function () {
+    (async function () {
+        await new Promise(function (resolve) {
+            if (window.Clerk) { resolve(); return; }
+            var t = setInterval(function () {
+                if (window.Clerk) { clearInterval(t); resolve(); }
+            }, 50);
+        });
+
         await window.Clerk.load();
-        const signedIn  = document.querySelectorAll('.clerk-signed-in');
-        const signedOut = document.querySelectorAll('.clerk-signed-out');
+
+        var signedIn  = document.querySelectorAll('.clerk-signed-in');
+        var signedOut = document.querySelectorAll('.clerk-signed-out');
+
         if (window.Clerk.user) {
-            signedIn.forEach(el  => { el.style.display = ''; });
-            signedOut.forEach(el => { el.style.display = 'none'; });
-            window.Clerk.mountUserButton(
-                document.getElementById('clerk-user-button-nav')
-            );
+            signedIn.forEach(function (el)  { el.style.display = ''; });
+            signedOut.forEach(function (el) { el.style.display = 'none'; });
+            var navBtn = document.getElementById('clerk-user-button-nav');
+            if (navBtn) { window.Clerk.mountUserButton(navBtn); }
         } else {
-            signedIn.forEach(el  => { el.style.display = 'none'; });
-            signedOut.forEach(el => { el.style.display = ''; });
+            signedIn.forEach(function (el)  { el.style.display = 'none'; });
+            signedOut.forEach(function (el) { el.style.display = ''; });
         }
-    });
+    })();
     </script>
 </body>
 </html>

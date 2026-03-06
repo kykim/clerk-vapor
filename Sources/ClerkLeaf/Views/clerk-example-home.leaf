@@ -1,6 +1,6 @@
 #extend("clerk-base"):
     #export("body"):
-        <h1>Welcome to #(appName ?? "My App")</h1>
+        <h1>Welcome to #if(appName):#(appName)#else:My App#endif</h1>
         <div class="clerk-signed-out">
             <p>Please <a href="/sign-in">sign in</a> or <a href="/sign-up">create an account</a>.</p>
         </div>

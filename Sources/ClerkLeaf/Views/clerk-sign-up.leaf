@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>#(pageTitle ?? "Sign Up")</title>
+    <title>#if(pageTitle):#(pageTitle)#else:Sign Up#endif</title>
     #clerkScript()
     <style>
         body {
@@ -24,7 +24,7 @@
     window.addEventListener('load', async function () {
         await window.Clerk.load();
         if (window.Clerk.user) {
-            window.location.href = '#(afterSignUpUrl ?? "/")';
+            window.location.href = '#if(afterSignUpUrl):#(afterSignUpUrl)#else:/#endif';
         }
     });
     </script>
