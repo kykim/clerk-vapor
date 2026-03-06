@@ -1,5 +1,6 @@
 import Vapor
 import Leaf
+import LeafKit
 import ClerkVapor
 
 // MARK: - ClerkLeaf
@@ -129,4 +130,47 @@ extension Request {
 extension Bundle {
     /// The resource bundle for ClerkLeaf — use this to locate bundled Leaf templates.
     public static var clerkLeaf: Bundle { .module }
+}
+
+// MARK: - Application Leaf source registration
+
+extension Application {
+
+    /// Adds the bundled ClerkLeaf templates as a Leaf source, merged with your
+    /// app's own `Resources/Views` directory.
+    ///
+    /// Call this instead of (or after) manually configuring `app.leaf.sources`:
+    /// ```swift
+    /// app.useClerkLeaf()         // registers tags + enables Leaf
+    /// app.addClerkLeafSources()  // adds bundled templates as a source
+    /// ```
+    public func addClerkLeafSources() {
+        guard let clerkViewsURL = Bundle.clerkLeaf.resourceURL?
+            .appendingPathComponent("Views") else {
+            logger.warning("[ClerkLeaf] Could not locate bundled Views directory.")
+            return
+        }
+
+        // App's own views directory
+        let appViewsPath = directory.viewsDirectory
+
+        let appSource = NIOLeafFiles(
+            fileio: self.fileio,
+            limits: .default,
+            sandboxDirectory: appViewsPath,
+            viewDirectory: appViewsPath
+        )
+
+        let clerkSource = NIOLeafFiles(
+            fileio: self.fileio,
+            limits: .default,
+            sandboxDirectory: clerkViewsURL.path,
+            viewDirectory: clerkViewsURL.path
+        )
+
+        let sources = LeafSources()
+        try? sources.register(using: appSource)
+        try? sources.register(source: "clerk", using: clerkSource)
+        leaf.sources = sources
+    }
 }
