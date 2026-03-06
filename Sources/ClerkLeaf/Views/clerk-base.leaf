@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>#(pageTitle ?? "My App")</title>
+    #clerkScript()
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #fff;
+            color: #111;
+        }
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            height: 56px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        header .logo {
+            font-weight: 700;
+            font-size: 1.1rem;
+            text-decoration: none;
+            color: inherit;
+        }
+        header nav { display: flex; align-items: center; gap: 1rem; }
+        header nav a {
+            text-decoration: none;
+            color: #374151;
+            font-size: 0.9rem;
+        }
+        header nav a:hover { color: #111; }
+        .clerk-signed-in,
+        .clerk-signed-out { display: none; }
+        main { padding: 2rem 1.5rem; max-width: 960px; margin: 0 auto; }
+    </style>
+</head>
+<body>
+    <header>
+        <a class="logo" href="/">#(appName ?? "My App")</a>
+        <nav>
+            <div class="clerk-signed-in">
+                <div id="clerk-user-button-nav"></div>
+            </div>
+            <div class="clerk-signed-out">
+                <a href="/sign-in">Sign in</a>
+                <a href="/sign-up">Sign up</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        #import("body")
+    </main>
+
+    <script>
+    window.addEventListener('load', async function () {
+        await window.Clerk.load();
+        const signedIn  = document.querySelectorAll('.clerk-signed-in');
+        const signedOut = document.querySelectorAll('.clerk-signed-out');
+        if (window.Clerk.user) {
+            signedIn.forEach(el  => { el.style.display = ''; });
+            signedOut.forEach(el => { el.style.display = 'none'; });
+            window.Clerk.mountUserButton(
+                document.getElementById('clerk-user-button-nav')
+            );
+        } else {
+            signedIn.forEach(el  => { el.style.display = 'none'; });
+            signedOut.forEach(el => { el.style.display = ''; });
+        }
+    });
+    </script>
+</body>
+</html>

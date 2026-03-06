@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>#(pageTitle ?? "Sign Up")</title>
+    #clerkScript()
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: #f4f4f5;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+    </style>
+</head>
+<body>
+    #clerkSignUp("clerk-sign-up")
+    <script>
+    // Redirect already-signed-in users
+    window.addEventListener('load', async function () {
+        await window.Clerk.load();
+        if (window.Clerk.user) {
+            window.location.href = '#(afterSignUpUrl ?? "/")';
+        }
+    });
+    </script>
+</body>
+</html>

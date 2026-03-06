@@ -1,0 +1,7 @@
+.build/
+build/
+
+# User settings
+xcuserdata/
+
+.DS_Store

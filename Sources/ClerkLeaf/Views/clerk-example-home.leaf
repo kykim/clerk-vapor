@@ -1,0 +1,11 @@
+#extend("clerk-base"):
+    #export("body"):
+        <h1>Welcome to #(appName ?? "My App")</h1>
+        <div class="clerk-signed-out">
+            <p>Please <a href="/sign-in">sign in</a> or <a href="/sign-up">create an account</a>.</p>
+        </div>
+        <div class="clerk-signed-in">
+            <p>You're signed in! Visit your <a href="/profile">profile</a>.</p>
+        </div>
+    #endexport
+#endextend
