@@ -137,7 +137,7 @@ final class ClerkWebhookTests: XCTestCase {
     func testWebhookRouteRegistration() async throws {
         app.useClerk(ClerkConfiguration(secretKey: "sk_test_dummy"))
 
-        app.clerkWebhook(at: "webhooks", "clerk", secret: "whsec_dGVzdHNlY3JldGtleXZhbHVlZm9ydGVzdGluZw==") { event, req in
+        app.clerkWebhook(at: "webhooks", "clerk", secret: "secret") { event, req in
             return .ok
         }
 
