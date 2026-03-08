@@ -57,6 +57,25 @@ public struct ClerkViewContext: Encodable {
     }
 }
 
+// MARK: - MergedClerkContext
+
+/// Encodes Clerk base context keys alongside a user-supplied `Encodable` context struct.
+/// Clerk keys are written first; user keys follow and may shadow them if needed.
+struct MergedClerkContext<U: Encodable>: Encodable {
+    let clerk: [String: any Encodable]
+    let user: U
+
+    func encode(to encoder: Encoder) throws {
+        // Write user context first (provides all typed properties)
+        try user.encode(to: encoder)
+        // Overlay Clerk keys on top
+        var container = encoder.container(keyedBy: AnyCodingKey.self)
+        for (key, value) in clerk {
+            try container.encode(AnyEncodable(value), forKey: AnyCodingKey(key))
+        }
+    }
+}
+
 // Helpers for ClerkViewContext
 private struct AnyEncodable: Encodable {
     private let _encode: (Encoder) throws -> Void
@@ -120,8 +139,7 @@ extension Request {
     }
 
     /// Render a Leaf template with an `Encodable` struct as context.
-    /// The struct's properties are JSON-encoded into a flat `[String: any Encodable]`
-    /// dictionary and merged with the Clerk base context before rendering.
+    /// The struct's properties are merged with the Clerk base context keys before rendering.
     ///
     /// ```swift
     /// struct PageContext: Encodable {
@@ -135,17 +153,7 @@ extension Request {
         _ template: String,
         context: C
     ) async throws -> View {
-        let data = try JSONEncoder().encode(context)
-        let raw  = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
-        var merged = ClerkLeafContext.base(for: self)
-        for (k, v) in raw {
-            if let encodable = v as? any Encodable {
-                merged[k] = encodable
-            } else {
-                merged[k] = "\(v)"   // fallback: stringify non-Encodable JSON primitives
-            }
-        }
-        return try await view.render(template, ClerkViewContext(merged))
+        return try await view.render(template, MergedClerkContext(clerk: ClerkLeafContext.base(for: self), user: context))
     }
 
     /// Render a Leaf template with only Clerk context (no additional context).
