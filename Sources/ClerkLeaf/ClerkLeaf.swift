@@ -49,6 +49,22 @@ public struct ClerkViewContext: Encodable {
         self.storage = dict.mapValues(AnyEncodable.init)
     }
 
+    /// Merge a typed `Encodable` struct with a base context dictionary.
+    /// The struct is JSON round-tripped to extract its keys, then merged with `base`.
+    /// `base` keys take precedence (Clerk metadata always wins).
+    public init<C: Encodable>(_ context: C, merging base: [String: any Encodable]) throws {
+        let data = try JSONEncoder().encode(context)
+        let json = (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+        var storage: [String: AnyEncodable] = [:]
+        for (k, v) in json {
+            storage[k] = AnyEncodable(JSONValue(v))
+        }
+        for (k, v) in base {
+            storage[k] = AnyEncodable(v)
+        }
+        self.storage = storage
+    }
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: AnyCodingKey.self)
         for (key, value) in storage {
@@ -57,26 +73,48 @@ public struct ClerkViewContext: Encodable {
     }
 }
 
-// MARK: - MergedClerkContext
+// Helpers for ClerkViewContext
 
-/// Encodes Clerk base context keys alongside a user-supplied `Encodable` context struct.
-/// Clerk keys are written first; user keys follow and may shadow them if needed.
-struct MergedClerkContext<U: Encodable>: Encodable {
-    let clerk: [String: any Encodable]
-    let user: U
+/// Wraps a JSON-deserialized `Any` value (from `JSONSerialization`) as `Encodable`.
+/// Handles the types JSONSerialization produces: String, Int, Double, Bool, [Any], [String:Any], NSNull.
+private enum JSONValue: Encodable {
+    case string(String)
+    case int(Int)
+    case double(Double)
+    case bool(Bool)
+    case array([JSONValue])
+    case object([String: JSONValue])
+    case null
+
+    init(_ any: Any) {
+        // Bool must be checked before Int/Double — on Apple platforms NSNumber
+        // bridges to all three, and Int/Double would match a boolean NSNumber first.
+        switch any {
+        case let v as Bool:           self = .bool(v)
+        case let v as String:         self = .string(v)
+        case let v as Int:            self = .int(v)
+        case let v as Double:         self = .double(v)
+        case let v as [Any]:          self = .array(v.map(JSONValue.init))
+        case let v as [String: Any]:  self = .object(v.mapValues(JSONValue.init))
+        case is NSNull:               self = .null
+        default:                      self = .string("\(any)")
+        }
+    }
 
     func encode(to encoder: Encoder) throws {
-        // Write user context first (provides all typed properties)
-        try user.encode(to: encoder)
-        // Overlay Clerk keys on top
-        var container = encoder.container(keyedBy: AnyCodingKey.self)
-        for (key, value) in clerk {
-            try container.encode(AnyEncodable(value), forKey: AnyCodingKey(key))
+        var c = encoder.singleValueContainer()
+        switch self {
+        case .string(let v):  try c.encode(v)
+        case .int(let v):     try c.encode(v)
+        case .double(let v):  try c.encode(v)
+        case .bool(let v):    try c.encode(v)
+        case .array(let v):   try c.encode(v)
+        case .object(let v):  try c.encode(v)
+        case .null:           try c.encodeNil()
         }
     }
 }
 
-// Helpers for ClerkViewContext
 private struct AnyEncodable: Encodable {
     private let _encode: (Encoder) throws -> Void
     init(_ value: any Encodable) { _encode = value.encode }
@@ -153,7 +191,8 @@ extension Request {
         _ template: String,
         context: C
     ) async throws -> View {
-        return try await view.render(template, MergedClerkContext(clerk: ClerkLeafContext.base(for: self), user: context))
+        let ctx = try ClerkViewContext(context, merging: ClerkLeafContext.base(for: self))
+        return try await view.render(template, ctx)
     }
 
     /// Render a Leaf template with only Clerk context (no additional context).
