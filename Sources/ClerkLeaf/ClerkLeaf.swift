@@ -119,6 +119,35 @@ extension Request {
         return try await view.render(template, ClerkViewContext(merged))
     }
 
+    /// Render a Leaf template with an `Encodable` struct as context.
+    /// The struct's properties are JSON-encoded into a flat `[String: any Encodable]`
+    /// dictionary and merged with the Clerk base context before rendering.
+    ///
+    /// ```swift
+    /// struct PageContext: Encodable {
+    ///     var exchanges: [Exchange]
+    ///     var flash: String?
+    ///     var flashType: String?
+    /// }
+    /// return try await req.clerkView("exchanges", context: PageContext(...))
+    /// ```
+    public func clerkView<C: Encodable>(
+        _ template: String,
+        context: C
+    ) async throws -> View {
+        let data = try JSONEncoder().encode(context)
+        let raw  = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+        var merged = ClerkLeafContext.base(for: self)
+        for (k, v) in raw {
+            if let encodable = v as? any Encodable {
+                merged[k] = encodable
+            } else {
+                merged[k] = "\(v)"   // fallback: stringify non-Encodable JSON primitives
+            }
+        }
+        return try await view.render(template, ClerkViewContext(merged))
+    }
+
     /// Render a Leaf template with only Clerk context (no additional context).
     public func clerkView(_ template: String) async throws -> View {
         try await clerkView(template, context: [String: String]())
